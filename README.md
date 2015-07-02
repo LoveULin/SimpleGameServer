@@ -1,2 +1,2 @@
 # SimpleGameServer
-A simple game server architecture.
+A simple game server.
