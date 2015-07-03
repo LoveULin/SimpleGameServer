@@ -8,6 +8,7 @@
 
 class Buffer : private boost::noncopyable
 {
+protected:
     // packet length field's length
     static constexpr int packetHLen = 2;
 
@@ -21,46 +22,48 @@ public:
             // fatal error
         }
     }
-    ~Buffer() // default noexcept
-    {
-        spl::free(m_buf);
-    }
-    const std::size_t Append(const char *buf, std::size_t len) noexcept
-    {
-        std::size_t ret(len);
-        if ((bufferUnit - m_end) >= len) {
-            // enough space
-            (void)memcpy(m_buf + m_end, buf, len);
-        }
-        else {
-            // move directly
-            (void)memmove(m_buf, (m_buf + m_pos), m_pos);
-            m_end -= m_pos;
-            m_pos = 0;
-            // copy again
-            ret = std::min(len, bufferUnit - m_end);
-            (void)memcpy(m_buf + m_end, buf, ret);
-        }
-        // the real byte
-        return ret;
-    }
-    // every time a complete packet
-    const char * const Consume(unsigned short &len) noexcept
-    {
-        std::size_t dataLen(m_end - m_pos);
-        if (dataLen < packetHLen) {
-            return nullptr;
-        }
-        len = ntohs(*(reinterpret_cast<unsigned short*>(m_buf + m_pos)));
-        if (dataLen < len) {
-            return nullptr;
-        }
-        return (m_buf + m_pos);
-    }
-private:
+    virtual ~Buffer() = 0; // default noexcept
+    const ssize_t Append(const char *buf, std::size_t len) noexcept;
+protected:
     char * const m_buf; // buffer
     std::size_t m_pos {0}; // current read pos
     std::size_t m_end {0}; // current write pos
+};
+
+class SendBuffer : public Buffer
+{
+public:
+    ~SendBuffer() = default;
+    char * const Product(std::size_t &len) noexcept;
+    const ssize_t Append(const char *buf, std::size_t len) noexcept
+    {
+        std::size_t totalLen(len + packetHLen);
+        if (totalLen > bufferUnit) {
+            return -1;
+        }
+        // move directly
+        (void)memmove(m_buf, (m_buf + m_pos), m_pos);
+        m_end -= m_pos;
+        m_pos = 0;
+        if (totalLen > (bufferUnit - m_end)) {
+            return 0;
+        }
+        const unsigned short netOrderLen(htons(static_cast<unsigned short>(len + packetHLen)));
+        ssize_t ret(Buffer::Append(reinterpret_cast<const char*>(&netOrderLen), 
+                                         sizeof(netOrderLen)));
+        assert(sizeof(netOrderLen) == ret);
+        ret = Buffer::Append(buf, len);
+        assert(ret == len);
+        return ret;
+    }
+};
+
+class RecvBuffer : public Buffer
+{
+public:
+    ~RecvBuffer() = default;
+    // every time a complete packet
+    const char * const Consume(unsigned short &len) noexcept;
 };
 
 #endif

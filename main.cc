@@ -16,12 +16,12 @@ static constexpr int uvBufferUnit = 256;
 struct pool_tag {};
 typedef boost::singleton_pool<pool_tag, (uvBufferUnit * sizeof(char))> spl;
 
-void cb_uv_AllocBuffer(uv_handle_t *handle, std::size_t suggested_size, uv_buf_t *buf)
+static void cb_uv_AllocBuffer(uv_handle_t *handle, std::size_t suggested_size, uv_buf_t *buf)
 {
     // ignore the suggested_size or we can use spl::ordered_malloc for chunk
     (void)suggested_size;
 
-    char *newBuf(static_cast<char*>(spl::malloc()));
+    char * const newBuf(static_cast<char*>(spl::malloc()));
     if (UNLIKELY(nullptr == newBuf)) {
         // fatal error
     }
@@ -29,7 +29,7 @@ void cb_uv_AllocBuffer(uv_handle_t *handle, std::size_t suggested_size, uv_buf_t
     buf->len = (uvBufferUnit * sizeof(char));
 }
 
-void cb_uv_Close(uv_handle_t *handle)
+static void cb_uv_Close(uv_handle_t *handle)
 {
     delete static_cast<Connection*>(handle->data);
     handle->data = nullptr;
@@ -37,28 +37,33 @@ void cb_uv_Close(uv_handle_t *handle)
 
 void dealBuffer(Connection *con, const char *buf, std::size_t len)
 {
-    std::size_t appendLen(con->m_buffer.Append(buf, len));
-    while (appendLen != len) {
+    const auto handlePacket = [&con]() -> bool {
         unsigned short packetLen;
-        const char *packet(con->m_buffer.Consume(packetLen));
+        const char * const packet(con->m_recvBuffer.Consume(packetLen));
         if (nullptr == packet) {
-            break;
+            return false;
         }
         // unserializing packet and handle
         ULin::Encap msg;
-        bool ret(msg.ParseFromString(std::string(packet, packetLen)));
+        const bool ret(msg.ParseFromString(std::string(packet, packetLen)));
         if (ret) {
-            Handler::pfHandler pf(handler::instance().GetHandler(msg.name()));
+            const Handler::pfHandler pf(handler::instance().GetHandler(msg.name()));
             if (nullptr != pf) {
                 pf(con, msg.msg());
             }
         }
-        len -= appendLen;
-        appendLen = con->m_buffer.Append(buf + appendLen, len);
+        return true; 
+    };
+    // need to handle the flood attack
+    ssize_t appendLen(con->m_recvBuffer.Append(buf, len));
+    while ((appendLen > 0) && (static_cast<std::size_t>(appendLen) != len)) {
+        (void)handlePacket();
+        appendLen += con->m_recvBuffer.Append(buf + appendLen, (len - appendLen));
     }
+    while (handlePacket());
 }
 
-void cb_uv_Read(uv_stream_t *stream, ssize_t nread, const uv_buf_t *buf)
+static void cb_uv_Read(uv_stream_t *stream, ssize_t nread, const uv_buf_t *buf)
 {
     if (nread < 0) {
         // error condition
@@ -79,7 +84,7 @@ void cb_uv_Read(uv_stream_t *stream, ssize_t nread, const uv_buf_t *buf)
     }
 }
 
-void cb_uv_Accept(uv_stream_t *req, int status)
+static void cb_uv_Accept(uv_stream_t *req, int status)
 {
     uv_tcp_t client;
     if (UNLIKELY(0 != uv_tcp_init(req->loop, &client))) {
@@ -95,8 +100,11 @@ void cb_uv_Accept(uv_stream_t *req, int status)
 
 int main()
 {
+    // register handlers
+    handler::instance().RegAllHandlers();
+
     // init the loop
-    uv_loop_t *loop(uv_default_loop());
+    uv_loop_t * const loop(uv_default_loop());
     assert(nullptr != loop);
 
     // init a tcp listener

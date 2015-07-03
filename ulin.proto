@@ -1,9 +1,0 @@
-syntax = "proto3";
-
-package ULin;
-
-message Encap
-{
-    bytes name = 1;
-    bytes msg = 2;
-}
