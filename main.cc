@@ -8,6 +8,8 @@
 #include "type.h"
 #include "connection.h"
 #include "buffer.h"
+#include "handler.h"
+#include "ulin.pb.h"
 
 static constexpr int uvBufferUnit = 256;
 
@@ -43,7 +45,14 @@ void dealBuffer(Connection *con, const char *buf, std::size_t len)
             break;
         }
         // unserializing packet and handle
-
+        ULin::Encap msg;
+        bool ret(msg.ParseFromString(std::string(packet, packetLen)));
+        if (ret) {
+            Handler::pfHandler pf(handler::instance().GetHandler(msg.name()));
+            if (nullptr != pf) {
+                pf(con, msg.msg());
+            }
+        }
         len -= appendLen;
         appendLen = con->m_buffer.Append(buf + appendLen, len);
     }
