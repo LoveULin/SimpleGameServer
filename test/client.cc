@@ -4,8 +4,8 @@
 #include <boost/property_tree/ptree.hpp>
 #include <boost/property_tree/json_parser.hpp>
 #include "../buffer.h"
-#include "../ulin.pb.h"
-#include "../test.pb.h"
+#include "../proto/ulin.pb.h"
+#include "../proto/test.pb.h"
 
 static void uv_cb_Write(uv_write_t *req, int status)
 {

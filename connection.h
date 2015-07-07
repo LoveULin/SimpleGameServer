@@ -6,7 +6,7 @@
 #include <uv.h>
 #include <google/protobuf/message.h>
 #include "buffer.h"
-#include "ulin.pb.h"
+#include "proto/ulin.pb.h"
 
 class Connection
 {

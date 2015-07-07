@@ -9,7 +9,7 @@
 #include "connection.h"
 #include "buffer.h"
 #include "handler.h"
-#include "ulin.pb.h"
+#include "proto/ulin.pb.h"
 
 static constexpr int uvBufferUnit = 256;
 

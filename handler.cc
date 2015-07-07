@@ -1,7 +1,7 @@
 
 #include "handler.h"
 #include "connection.h"
-#include "test.pb.h"
+#include "proto/test.pb.h"
 
 void CPing(Connection *con, const std::string &msg)
 {
