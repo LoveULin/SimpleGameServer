@@ -2,6 +2,7 @@
 #include "handler.h"
 #include "connection.h"
 #include "proto/test.pb.h"
+#include "timer.h"
 
 void CPing(Connection *con, const std::string &msg)
 {

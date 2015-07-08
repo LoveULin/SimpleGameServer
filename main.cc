@@ -11,7 +11,10 @@
 #include "handler.h"
 #include "proto/ulin.pb.h"
 
-static constexpr int uvBufferUnit = 256;
+namespace
+{
+    constexpr int uvBufferUnit = 256;
+}
 
 struct pool_tag {};
 typedef boost::singleton_pool<pool_tag, (uvBufferUnit * sizeof(char))> spl;
@@ -90,7 +93,7 @@ static void cb_uv_Accept(uv_stream_t *req, int status)
     if (UNLIKELY(0 != uv_tcp_init(req->loop, &client))) {
         // fatal error
     }
-    // set in our buffer
+    // set in the connection
     client.data = new Connection(req);
     if (UNLIKELY(0 != uv_accept(req, reinterpret_cast<uv_stream_t*>(&client)))) {
         // fatal error
@@ -115,7 +118,7 @@ int main()
     // load config
     sockaddr_in addr;
     boost::property_tree::ptree pt;
-    boost::property_tree::read_json("./config.json", pt); // return value ??
+    boost::property_tree::read_json("./config.json", pt);
     ret = uv_ip4_addr(pt.get<std::string>("myip").c_str(), pt.get<int>("myport"), &addr);
     assert(0 == ret);
     ret = uv_tcp_bind(&handle, reinterpret_cast<sockaddr*>(&addr), 0);
@@ -125,6 +128,7 @@ int main()
 
     // go!!
     ret = uv_run(loop, UV_RUN_DEFAULT);
+    // log the return value
 
     // os will do the cleanup
 }
