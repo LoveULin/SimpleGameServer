@@ -4,11 +4,13 @@
 #include <uv.h>
 #include <boost/property_tree/ptree.hpp>
 #include <boost/property_tree/json_parser.hpp>
+#include <boost/thread/detail/singleton.hpp>
 #include <boost/pool/singleton_pool.hpp>
 #include "type.h"
 #include "connection.h"
 #include "buffer.h"
 #include "handler.h"
+#include "loadcsv.h"
 #include "proto/ulin.pb.h"
 
 namespace
@@ -103,6 +105,8 @@ static void cb_uv_Accept(uv_stream_t *req, int status)
 
 int main()
 {
+    // init CSVs
+    loadCSV::instance().LoadAllCSV();
     // register handlers
     handler::instance().RegAllHandlers();
 
@@ -117,9 +121,9 @@ int main()
 
     // load config
     sockaddr_in addr;
-    boost::property_tree::ptree pt;
-    boost::property_tree::read_json("./config.json", pt);
-    ret = uv_ip4_addr(pt.get<std::string>("myip").c_str(), pt.get<int>("myport"), &addr);
+    boost::property_tree::read_json("./config.json", pt::instance());
+    ret = uv_ip4_addr(pt::instance().get<std::string>("myip").c_str(), 
+                      pt::instance().get<int>("myport"), &addr);
     assert(0 == ret);
     ret = uv_tcp_bind(&handle, reinterpret_cast<sockaddr*>(&addr), 0);
     assert(0 == ret);
