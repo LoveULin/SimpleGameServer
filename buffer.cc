@@ -13,7 +13,7 @@ const ssize_t Buffer::Append(const char *buf, std::size_t len) noexcept
     if (len > bufferUnit) {
         return -1;
     }
-    ssize_t ret(len);
+    std::size_t ret(len);
     if ((bufferUnit - m_end) >= len) {
         // space enough
         (void)memcpy(m_buf + m_end, buf, len);

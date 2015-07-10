@@ -16,8 +16,8 @@ public:
         m_timers.max_load_factor(5);
     }
     template<typename T>
-    const int Add(unsigned long long initial, unsigned long long interval, 
-                  const T &functor, void *data)
+    const ssize_t Add(unsigned long long initial, unsigned long long interval, 
+                      const T &functor, void *data)
     {
         uv_timer_t * const timer(static_cast<uv_timer_t*>(m_pool.malloc()));
         if (UNLIKELY(nullptr == timer)) {

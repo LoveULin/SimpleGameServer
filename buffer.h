@@ -10,9 +10,9 @@ class Buffer : private boost::noncopyable
 {
 protected:
     // packet length field's length
-    static constexpr int packetHLen = 2;
+    static constexpr unsigned int packetHLen = 2;
 
-    static constexpr int bufferUnit = 65536;
+    static constexpr unsigned int bufferUnit = 65536;
     struct pool_tag {};
     typedef boost::singleton_pool<pool_tag, (bufferUnit * sizeof(char))> spl;
 public:
@@ -51,9 +51,9 @@ public:
         const unsigned short netOrderLen(htons(static_cast<unsigned short>(len + packetHLen)));
         ssize_t ret(Buffer::Append(reinterpret_cast<const char*>(&netOrderLen), 
                                          sizeof(netOrderLen)));
-        assert(sizeof(netOrderLen) == ret);
+        assert((ret > 0) && (sizeof(netOrderLen) == static_cast<std::size_t>(ret)));
         ret = Buffer::Append(buf, len);
-        assert(ret == len);
+        assert((ret > 0) && (static_cast<std::size_t>(ret) == len));
         return ret;
     }
 };
