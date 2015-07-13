@@ -14,7 +14,7 @@ class Timer : private boost::noncopyable
     class Deleter
     {
     public:
-        Deleter(boost::pool<> pool) : m_pool(pool) {}
+        explicit Deleter(boost::pool<> pool) : m_pool(pool) {}
         void operator()(uv_timer_t *timer)
         {
             assert(m_pool.is_from(timer));
@@ -24,7 +24,7 @@ class Timer : private boost::noncopyable
         boost::pool<> &m_pool;
     };
 public:
-    Timer(uv_loop_t *loop) noexcept : m_loop(loop), m_pool(sizeof(uv_timer_t))
+    explicit Timer(uv_loop_t *loop) noexcept : m_loop(loop), m_pool(sizeof(uv_timer_t))
     {
         m_timers.max_load_factor(5);
     }

@@ -1,6 +1,6 @@
 
-#ifndef __ULIN_TYPE_H
-#define __ULIN_TYPE_H
+#ifndef __ULIN_TYPE_H_
+#define __ULIN_TYPE_H_
 
 #undef LIKELY
 #undef UNLIKELY

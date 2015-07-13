@@ -1,6 +1,6 @@
 
-#ifndef __ULIN_BUFFER_H
-#define __ULIN_BUFFER_H
+#ifndef __ULIN_BUFFER_H_
+#define __ULIN_BUFFER_H_
 
 #include <string>
 #include <boost/pool/singleton_pool.hpp>

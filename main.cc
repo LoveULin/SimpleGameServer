@@ -11,6 +11,7 @@
 #include "buffer.h"
 #include "handler.h"
 #include "loadcsv.h"
+#include "redisclient.h"
 #include "proto/ulin.pb.h"
 
 namespace
@@ -20,6 +21,9 @@ namespace
 
 struct pool_tag {};
 typedef boost::singleton_pool<pool_tag, (uvBufferUnit * sizeof(char))> spl;
+
+struct client_pool_tag {};
+typedef boost::singleton_pool<client_pool_tag, sizeof(uv_tcp_t)> clientSPL;
 
 static void cb_uv_AllocBuffer(uv_handle_t *handle, std::size_t suggested_size, uv_buf_t *buf)
 {
@@ -91,16 +95,23 @@ static void cb_uv_Read(uv_stream_t *stream, ssize_t nread, const uv_buf_t *buf)
 
 static void cb_uv_Accept(uv_stream_t *req, int status)
 {
-    uv_tcp_t client;
-    if (UNLIKELY(0 != uv_tcp_init(req->loop, &client))) {
+    uv_tcp_t * const client(static_cast<uv_tcp_t*>(clientSPL::malloc()));
+    if (UNLIKELY(nullptr == client)) {
+        // fatel error
+    }
+    if (UNLIKELY(0 != uv_tcp_init(req->loop, client))) {
         // fatal error
     }
     // set in the connection
-    client.data = new Connection(req);
-    if (UNLIKELY(0 != uv_accept(req, reinterpret_cast<uv_stream_t*>(&client)))) {
+    client->data = new Connection(req);
+    if (UNLIKELY(0 != uv_accept(req, reinterpret_cast<uv_stream_t*>(client)))) {
         // fatal error
     }
-    uv_read_start(reinterpret_cast<uv_stream_t*>(&client), cb_uv_AllocBuffer, cb_uv_Read);
+    if (UNLIKELY(0 != uv_read_start(reinterpret_cast<uv_stream_t*>(client), 
+                                    cb_uv_AllocBuffer, 
+                                    cb_uv_Read))) {
+        // fatel error
+    }
 }
 
 int main()
@@ -114,7 +125,7 @@ int main()
     uv_loop_t * const loop(uv_default_loop());
     assert(nullptr != loop);
 
-    // init a tcp listener
+    // init a tcp listener (for accept the connections from game clients)
     uv_tcp_t handle;
     int ret(uv_tcp_init(loop, &handle));
     assert(0 == ret);

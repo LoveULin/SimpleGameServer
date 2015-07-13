@@ -12,7 +12,7 @@ class Circle : private boost::noncopyable
     class Deleter
     {
     public:
-        Deleter(boost::pool<> &pool) : m_pool(pool) {}
+        explicit Deleter(boost::pool<> &pool) : m_pool(pool) {}
         void operator()(uv_idle_t *idle)
         {
             assert(m_pool.is_from(idle));
@@ -22,7 +22,7 @@ class Circle : private boost::noncopyable
         boost::pool<> &m_pool;
     };
 public:
-    Circle(uv_loop_t *loop) noexcept : m_loop(loop), m_pool(sizeof(uv_idle_t))
+    explicit Circle(uv_loop_t *loop) noexcept : m_loop(loop), m_pool(sizeof(uv_idle_t))
     {
         m_circles.max_load_factor(5);
     }
@@ -35,7 +35,7 @@ public:
     {
         const std::unique_ptr<uv_idle_t> idle(static_cast<uv_idle_t*>(m_pool.malloc()), 
                                               Deleter(m_pool));
-        if (!idle) {
+        if (UNLIKELY(!idle)) {
             return -ENOMEM;
         }
         int ret(uv_idle_init(m_loop, idle.get()));
