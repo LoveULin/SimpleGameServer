@@ -3,6 +3,7 @@
 #include "connection.h"
 #include "proto/test.pb.h"
 #include "timer.h"
+#include "circle.h"
 
 void CPing(Connection *con, const std::string &msg)
 {

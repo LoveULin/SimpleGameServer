@@ -17,7 +17,7 @@ public:
     }
     template<typename T>
     const ssize_t Add(unsigned long long initial, unsigned long long interval, 
-                      const T &functor, void *data)
+                      const T &functor)
     {
         uv_timer_t * const timer(static_cast<uv_timer_t*>(m_pool.malloc()));
         if (UNLIKELY(nullptr == timer)) {
@@ -38,10 +38,11 @@ public:
         if (it == m_timers.end()) {
             return;
         }
-        (void)uv_timer_stop(it->second);
+        uv_timer_t * const timer(it->second);
+        (void)uv_timer_stop(timer);
         (void)m_timers.erase(it);
-        assert(m_pool.is_from(it->second));
-        m_pool.free(it->second);
+        assert(m_pool.is_from(timer));
+        m_pool.free(timer);
         return;
     }
 private:
