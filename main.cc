@@ -20,7 +20,7 @@ namespace
     constexpr int uvBufferUnit = 256;
 }
 
-// ptree global instance;
+// ptree global instance
 boost::property_tree::ptree pt;
 
 struct pool_tag {};
@@ -46,6 +46,9 @@ static void cb_uv_Close(uv_handle_t *handle)
 {
     delete static_cast<Connection*>(handle->data);
     handle->data = nullptr;
+    static_cast<uv_async_t*>(handle->loop->data)->data = nullptr;
+    assert(clientSPL::is_from(handle));
+    clientSPL::free(handle);
 }
 
 void dealBuffer(Connection *con, const char *buf, std::size_t len)
@@ -127,6 +130,15 @@ static void cb_uv_HandleSignal(uv_signal_t *handle, int signum)
     uv_stop(handle->loop);
 }
 
+static void cb_uv_Async(uv_async_t *handle)
+{
+    Connection * const conn(static_cast<Connection*>(handle->data));
+    if (nullptr == conn) {
+        return;
+    }
+    // conn->Flush();
+}
+
 int main()
 {
     // load config first
@@ -142,9 +154,15 @@ int main()
     uv_loop_t * const loop(uv_default_loop());
     assert(nullptr != loop);
 
+    // init libuv's eventfd
+    uv_async_t async;
+    int ret(uv_async_init(loop, &async, cb_uv_Async));
+    assert(0 == ret);
+    loop->data = &async;
+
     // init a signal handler for exit normally
     uv_signal_t signal;
-    int ret(uv_signal_init(loop, &signal));
+    ret = uv_signal_init(loop, &signal);
     assert(0 == ret);
     ret = uv_signal_start(&signal, cb_uv_HandleSignal, SIGINT);
     assert(0 == ret);

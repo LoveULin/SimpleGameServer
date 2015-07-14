@@ -25,27 +25,31 @@ public:
 
         ssize_t sendLen(m_sendBuffer.Append(m_tmpBuffer.c_str(), m_tmpBuffer.length()));
         if (0 == sendLen) {
-            std::size_t len; 
-            char * const data(m_sendBuffer.Product(len));
-            assert(nullptr != data);
-            assert(0 != len);
-
-            const uv_buf_t buf {data, len};
-            uv_write_t req;
-            int err(uv_write(&req, m_uv_stream, &buf, 1, Connection::cb_uv_Write));
-            if (0 != err) {
-                // error handler
-            }
-            ssize_t sendLen(m_sendBuffer.Append(m_tmpBuffer.c_str(), m_tmpBuffer.length()));
-            assert(sendLen > 0);
-            assert(static_cast<std::size_t>(sendLen) == m_tmpBuffer.length());
-            // need to reschedule
+            Flush();
+            sendLen = m_sendBuffer.Append(m_tmpBuffer.c_str(), m_tmpBuffer.length());
         }
-        else {
-            assert(sendLen > 0);
-            assert(static_cast<std::size_t>(sendLen) == m_tmpBuffer.length());
+        assert(sendLen > 0);
+        assert(static_cast<std::size_t>(sendLen) == m_tmpBuffer.length());
+        // need to reschedule
+        uv_async_t * const async(static_cast<uv_async_t*>(m_uv_stream->loop->data));
+        async->data = this; 
+        if (0 != uv_async_send(async)) {
+            // fatal error
         }
         return true;
+    }
+    void Flush() {
+        std::size_t len; 
+        char * const data(m_sendBuffer.Product(len));
+        assert(nullptr != data);
+        assert(0 != len);
+
+        const uv_buf_t buf {data, len};
+        uv_write_t req;
+        int err(uv_write(&req, m_uv_stream, &buf, 1, Connection::cb_uv_Write));
+        if (0 != err) {
+            // error handler
+        }
     }
 private:
     static void cb_uv_Write(uv_write_t *req, int status) noexcept

@@ -4,15 +4,20 @@
 #include <boost/property_tree/ptree.hpp>
 #include <boost/property_tree/json_parser.hpp>
 #include "../buffer.h"
+#include "../handler.h"
 #include "../proto/ulin.pb.h"
 #include "../proto/test.pb.h"
+
+// global instance
+boost::property_tree::ptree pt;
+
+static SendBuffer buffer; 
 
 static void uv_cb_Write(uv_write_t *req, int status)
 {
     std::cout << "Status: " << status << std::endl;
 }
 
-static SendBuffer buffer; 
 static void uv_cb_Connected(uv_connect_t *req, int status)
 {
     if (status < 0) {
@@ -35,10 +40,17 @@ static void uv_cb_Connected(uv_connect_t *req, int status)
     uv_buf_t buf(uv_buf_init(data, len));
     uv_write_t lol;
     (void)uv_write(&lol, reinterpret_cast<uv_stream_t*>(req->handle), &buf, 1, uv_cb_Write);
+    std::cout << "Message Ping out" << std::endl;
 }
 
 int main()
 {
+    // load config 
+    boost::property_tree::read_json("../config.json", pt); // return value ??
+
+    // register handlers
+    handler::instance().RegAllHandlers();
+
     // init the loop
     uv_loop_t * const loop(uv_default_loop()); 
     assert(nullptr != loop);
@@ -48,10 +60,7 @@ int main()
     int ret(uv_tcp_init(loop, &handle));
     assert(0 == ret);
 
-    // load config 
     sockaddr_in addr;
-    boost::property_tree::ptree pt;
-    boost::property_tree::read_json("../config.json", pt); // return value ??
     ret = uv_ip4_addr(pt.get<std::string>("myip").c_str(), pt.get<int>("myport"), &addr);
     assert(0 == ret);
     uv_connect_t req; 
@@ -60,9 +69,6 @@ int main()
 
     // go!!
     ret = uv_run(loop, UV_RUN_DEFAULT);
-
-    // pause
-    std::istream_iterator<int> it(std::cin);
 
     // os will do the cleanup
 }
