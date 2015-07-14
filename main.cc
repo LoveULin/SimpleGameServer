@@ -7,6 +7,7 @@
 #include <boost/thread/detail/singleton.hpp>
 #include <boost/pool/singleton_pool.hpp>
 #include "type.h"
+#include "logger.h"
 #include "connection.h"
 #include "buffer.h"
 #include "handler.h"
@@ -18,6 +19,9 @@ namespace
 {
     constexpr int uvBufferUnit = 256;
 }
+
+// ptree global instance;
+boost::property_tree::ptree pt;
 
 struct pool_tag {};
 typedef boost::singleton_pool<pool_tag, (uvBufferUnit * sizeof(char))> spl;
@@ -114,8 +118,21 @@ static void cb_uv_Accept(uv_stream_t *req, int status)
     }
 }
 
+static void cb_uv_HandleSignal(uv_signal_t *handle, int signum)
+{
+    assert(handle->signum == signum);
+    uv_signal_stop(handle);
+
+    // dangerous!!
+    uv_stop(handle->loop);
+}
+
 int main()
 {
+    // load config first
+    boost::property_tree::read_json("./config.json", pt);
+    theLog::instance() << "start...";
+
     // init CSVs
     loadCSV::instance().LoadAllCSV();
     // register handlers
@@ -125,16 +142,21 @@ int main()
     uv_loop_t * const loop(uv_default_loop());
     assert(nullptr != loop);
 
-    // init a tcp listener (for accept the connections from game clients)
-    uv_tcp_t handle;
-    int ret(uv_tcp_init(loop, &handle));
+    // init a signal handler for exit normally
+    uv_signal_t signal;
+    int ret(uv_signal_init(loop, &signal));
+    assert(0 == ret);
+    ret = uv_signal_start(&signal, cb_uv_HandleSignal, SIGINT);
     assert(0 == ret);
 
-    // load config
+    // init a tcp listener (for accept the connections from game clients)
+    uv_tcp_t handle;
+    ret = uv_tcp_init(loop, &handle);
+    assert(0 == ret);
+
     sockaddr_in addr;
-    boost::property_tree::read_json("./config.json", pt::instance());
-    ret = uv_ip4_addr(pt::instance().get<std::string>("myip").c_str(), 
-                      pt::instance().get<int>("myport"), &addr);
+    ret = uv_ip4_addr(pt.get<std::string>("myip").c_str(), 
+                      pt.get<int>("myport"), &addr);
     assert(0 == ret);
     ret = uv_tcp_bind(&handle, reinterpret_cast<sockaddr*>(&addr), 0);
     assert(0 == ret);

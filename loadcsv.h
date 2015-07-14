@@ -14,7 +14,8 @@
 #include <csv.h>
 #include "type.h"
 
-typedef boost::detail::thread::singleton<boost::property_tree::ptree> pt;
+// in main.cc
+extern boost::property_tree::ptree pt;
 
 class LoadCSV : private boost::noncopyable
 {
@@ -58,7 +59,7 @@ class LoadCSV : private boost::noncopyable
 
     static constexpr std::size_t tmpBufferSize = 8192;
 public:
-    LoadCSV() : m_pathPre(pt::instance().get<std::string>("csvPrefix")) {}
+    LoadCSV() : m_pathPre(pt.get<std::string>("csvprefix")) {}
     void LoadAllCSV();
 private:
     void LoadACSV(const std::string &name)
@@ -71,8 +72,8 @@ private:
         std::ifstream ifs(m_pathPre + '/' + name);
         while (ifs.good()) {
             const std::streamsize size(ifs.readsome(tmpBuffer, sizeof(tmpBuffer)));
-            if (UNLIKELY(size <= 0)) {
-                assert(false);
+            if (size <= 0) {
+                break;
             }
             if (static_cast<std::size_t>(size) != csv_parse(&m_p, tmpBuffer, size, 
                                                             cb_libcsv_1, cb_libcsv_2, userData)) {

@@ -1,4 +1,6 @@
 {
     "myip": "192.168.1.157", 
-    "myport": 5002
+    "myport": 5002, 
+    "csvprefix": "./data", 
+    "logfile": "./loglol"
 }
