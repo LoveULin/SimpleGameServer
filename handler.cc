@@ -12,11 +12,11 @@ void CPing(Connection *con, const std::string &msg)
     if (!msgPing.ParseFromString(msg)) {
         return;
     }
-    theLog::instance() << "Message Ping in";
+    LOG_INFO << "Message Ping in";
     Test::Pong msgPong;
     msgPong.set_magic(msgPing.magic());
     (void)con->Send(msgPong);
-    theLog::instance() << "Out message Pong";
+    LOG_INFO << "Out message Pong";
 }
 
 void Handler::RegAllHandlers()
