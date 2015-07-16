@@ -13,5 +13,10 @@
 #define UNLIKELY(x) (x)
 #endif
 
+#include <boost/thread/detail/singleton.hpp>
+#include <boost/property_tree/ptree.hpp>
+
+typedef boost::detail::thread::singleton<boost::property_tree::ptree> pt;
+
 #endif
 

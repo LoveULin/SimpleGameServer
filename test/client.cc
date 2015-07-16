@@ -1,15 +1,12 @@
 
 #include <string>
 #include <uv.h>
-#include <boost/property_tree/ptree.hpp>
 #include <boost/property_tree/json_parser.hpp>
-#include "../buffer.h"
-#include "../handler.h"
+#include "uvutil.h"
+#include "buffer.h"
+#include "handler.h"
 #include "../proto/ulin.pb.h"
 #include "../proto/test.pb.h"
-
-// global instance
-boost::property_tree::ptree pt;
 
 static SendBuffer buffer; 
 
@@ -24,29 +21,38 @@ static void uv_cb_Connected(uv_connect_t *req, int status)
         std::cout << "Connect failed!!" << std::endl;
         return;
     }
-    assert(0 == status);
-    Test::Ping msgPing;
-    msgPing.set_magic(502);
-    std::string tmpBuffer(msgPing.SerializeAsString());
+    int ret(uv_read_start(reinterpret_cast<uv_stream_t*>(req->handle), 
+                          cb_uv_AllocBuffer, 
+                          cb_uv_Read));
+    if (LIKELY(0 == ret)) {
+        req->handle->data = nullptr;
 
-    ULin::Encap msgWhole;
-    msgWhole.set_msg(tmpBuffer);
-    msgWhole.set_name(Test::Ping::default_instance().GetTypeName());
-    msgWhole.SerializeToString(&tmpBuffer);
-    (void)buffer.Append(tmpBuffer.c_str(), tmpBuffer.length());
+        Test::Ping msgPing;
+        msgPing.set_magic(502);
+        std::string tmpBuffer(msgPing.SerializeAsString());
 
-    std::size_t len;
-    char *data(buffer.Product(len));
-    uv_buf_t buf(uv_buf_init(data, len));
-    uv_write_t lol;
-    (void)uv_write(&lol, reinterpret_cast<uv_stream_t*>(req->handle), &buf, 1, uv_cb_Write);
-    std::cout << "Message Ping out" << std::endl;
+        ULin::Encap msgWhole;
+        msgWhole.set_msg(tmpBuffer);
+        msgWhole.set_name(Test::Ping::default_instance().GetTypeName());
+        msgWhole.SerializeToString(&tmpBuffer);
+        (void)buffer.Append(tmpBuffer.c_str(), tmpBuffer.length());
+
+        std::size_t len;
+        char *data(buffer.Product(len));
+        uv_buf_t buf(uv_buf_init(data, len));
+        uv_write_t lol;
+        (void)uv_write(&lol, reinterpret_cast<uv_stream_t*>(req->handle), &buf, 1, uv_cb_Write);
+        std::cout << "Message Ping out" << std::endl;
+    }
+    else {
+        std::cout << "Accept failed, uv_read_start: " << ret << std::endl;
+    }
 }
 
 int main()
 {
     // load config 
-    boost::property_tree::read_json("../config.json", pt); // return value ??
+    boost::property_tree::read_json("../config.json", pt::instance());
 
     // register handlers
     handler::instance().RegAllHandlers();
@@ -61,7 +67,7 @@ int main()
     assert(0 == ret);
 
     sockaddr_in addr;
-    ret = uv_ip4_addr(pt.get<std::string>("myip").c_str(), pt.get<int>("myport"), &addr);
+    ret = uv_ip4_addr(pt::instance().get<std::string>("myip").c_str(), pt::instance().get<int>("myport"), &addr);
     assert(0 == ret);
     uv_connect_t req; 
     ret = uv_tcp_connect(&req, &handle, reinterpret_cast<sockaddr*>(&addr), uv_cb_Connected);

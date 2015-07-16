@@ -2,6 +2,7 @@
 #ifndef __ULIN_BUFFER_H_
 #define __ULIN_BUFFER_H_
 
+#include <arpa/inet.h>
 #include <string>
 #include <boost/pool/singleton_pool.hpp>
 #include "type.h"

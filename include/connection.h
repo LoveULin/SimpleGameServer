@@ -5,7 +5,9 @@
 #include <string>
 #include <uv.h>
 #include <google/protobuf/message.h>
+#include "logger.h"
 #include "buffer.h"
+#include "handler.h"
 #include "proto/ulin.pb.h"
 
 class Connection
@@ -50,6 +52,42 @@ public:
         if (0 != err) {
             // error handler
         }
+    }
+    void DealBuffer(const char *buf, std::size_t len)
+    {
+        // lamda
+        const auto handlePacket = [this]() -> bool {
+            unsigned short packetLen;
+            const char * const packet(this->m_recvBuffer.Consume(packetLen));
+            if (nullptr == packet) {
+                // no valid whole packet
+                return false;
+            }
+            // unserializing packet and handle
+            ULin::Encap msg;
+            const bool ret(msg.ParseFromString(std::string(packet, packetLen)));
+            if (ret) {
+                const Handler::pfHandler pf(handler::instance().GetHandler(msg.name()));
+                if (nullptr != pf) {
+                    LOG_INFO << "DealBuffer, handle a message: " << msg.name();
+                    pf(this, msg.msg());
+                }
+                else {
+                    LOG_WARN << "DealBuffer, recv a unhandled message: " << msg.name();
+                }
+            }
+            else {
+                LOG_WARN << "DealBuffer, recv a illegal message";
+            }
+            return true; 
+        };
+        // TODO: need to handle the flood attack
+        ssize_t appendLen(m_recvBuffer.Append(buf, len));
+        while ((appendLen > 0) && (static_cast<std::size_t>(appendLen) != len)) {
+            (void)handlePacket();
+            appendLen += m_recvBuffer.Append(buf + appendLen, (len - appendLen));
+        }
+        while (handlePacket());
     }
 private:
     static void cb_uv_Write(uv_write_t *req, int status) noexcept

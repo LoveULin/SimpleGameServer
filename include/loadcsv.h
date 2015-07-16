@@ -9,13 +9,9 @@
 #include <fstream>
 #include <functional>
 #include <boost/noncopyable.hpp>
-#include <boost/property_tree/ptree.hpp>
 #include <boost/thread/detail/singleton.hpp>
 #include <csv.h>
 #include "type.h"
-
-// in main.cc
-extern boost::property_tree::ptree pt;
 
 class LoadCSV : private boost::noncopyable
 {
@@ -59,7 +55,7 @@ class LoadCSV : private boost::noncopyable
 
     static constexpr std::size_t tmpBufferSize = 8192;
 public:
-    LoadCSV() : m_pathPre(pt.get<std::string>("csvprefix")) {}
+    LoadCSV() : m_pathPre(pt::instance().get<std::string>("csvprefix")) {}
     void LoadAllCSV();
 private:
     void LoadACSV(const std::string &name)

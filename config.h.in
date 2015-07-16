@@ -6,6 +6,28 @@
 /* Define to 1 if you have the <inttypes.h> header file. */
 #undef HAVE_INTTYPES_H
 
+/* Define to 1 if you have the `boost_log' library (-lboost_log). */
+#undef HAVE_LIBBOOST_LOG
+
+/* Define to 1 if you have the `boost_log_setup' library (-lboost_log_setup).
+   */
+#undef HAVE_LIBBOOST_LOG_SETUP
+
+/* Define to 1 if you have the `boost_system' library (-lboost_system). */
+#undef HAVE_LIBBOOST_SYSTEM
+
+/* Define to 1 if you have the `boost_thread' library (-lboost_thread). */
+#undef HAVE_LIBBOOST_THREAD
+
+/* Define to 1 if you have the `csv' library (-lcsv). */
+#undef HAVE_LIBCSV
+
+/* Define to 1 if you have the `protobuf' library (-lprotobuf). */
+#undef HAVE_LIBPROTOBUF
+
+/* Define to 1 if you have the `uv' library (-luv). */
+#undef HAVE_LIBUV
+
 /* Define to 1 if your system has a GNU libc compatible `malloc' function, and
    to 0 otherwise. */
 #undef HAVE_MALLOC
@@ -66,6 +88,12 @@
 
 /* Version number of package */
 #undef VERSION
+
+/* Define to `__inline__' or `__inline' if that's what the C compiler
+   calls it, or to nothing if 'inline' is not supported under any name.  */
+#ifndef __cplusplus
+#undef inline
+#endif
 
 /* Define to rpl_malloc if the replacement function should be used. */
 #undef malloc

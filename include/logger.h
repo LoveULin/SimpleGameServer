@@ -2,7 +2,6 @@
 #ifndef __ULIN_LOG_H_
 #define __ULIN_LOG_H_
 
-#include <boost/property_tree/ptree.hpp>
 #include <boost/thread/detail/singleton.hpp>
 #include <boost/log/trivial.hpp>
 #include <boost/log/sources/logger.hpp>
@@ -11,9 +10,6 @@
 #include <boost/log/utility/setup/file.hpp>
 #include <boost/log/utility/setup/common_attributes.hpp>
 #include "loadcsv.h"
-
-// in main.cc
-extern boost::property_tree::ptree pt;
 
 class Log : private boost::noncopyable
 {
@@ -30,15 +26,17 @@ public:
     Log() // don't know whether will throw exception or not
     {
         (void)boost::log::add_console_log(std::cout, 
-            boost::log::keywords::format = pt.get<std::string>("consolelogformat").c_str());
+            boost::log::keywords::format = 
+                pt::instance().get<std::string>("consolelogformat").c_str());
         (void)boost::log::add_file_log(
             boost::log::keywords::file_name = 
-                pt.get<std::string>("logfile") + "_%Y%m%d_%H%M%S.%N.log", 
+                pt::instance().get<std::string>("logfile") + "_%Y%m%d_%H%M%S.%N.log", 
             boost::log::keywords::rotation_size = 10 * 1024 * 1024, 
             boost::log::keywords::time_based_rotation = 
                 boost::log::sinks::file::rotation_at_time_point(0, 0, 0), 
             boost::log::keywords::auto_flush = true, 
-            boost::log::keywords::format = pt.get<std::string>("filelogformat").c_str());
+            boost::log::keywords::format = 
+                pt::instance().get<std::string>("filelogformat").c_str());
         boost::log::add_common_attributes();
     }
     boost::log::sources::severity_logger<Severity> &GetLogger()
