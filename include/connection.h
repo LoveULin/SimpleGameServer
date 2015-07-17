@@ -12,9 +12,8 @@
 
 class Connection
 {
-    friend void dealBuffer(Connection *con, const char *buf, std::size_t len);
 public:
-    explicit Connection(uv_stream_t *stream) noexcept : m_uv_stream(stream) {}
+    explicit Connection(uv_tcp_t *stream) noexcept : m_uv_tcp(stream) {}
     const bool Send(const ::google::protobuf::Message &data) noexcept
     {
         ULin::Encap msg;
@@ -33,10 +32,16 @@ public:
         assert(sendLen > 0);
         assert(static_cast<std::size_t>(sendLen) == m_tmpBuffer.length());
         // need to reschedule
-        uv_async_t * const async(static_cast<uv_async_t*>(m_uv_stream->loop->data));
-        async->data = this; 
-        if (0 != uv_async_send(async)) {
-            // fatal error
+        uv_async_t * const async(static_cast<uv_async_t*>(m_uv_tcp->loop->data));
+        if (nullptr != async) {
+            async->data = this; 
+            int err(uv_async_send(async));
+            if (0 != err) {
+                LOG_FATAL << "Send, ret: " << err;
+            }
+        }
+        else {
+            Flush();
         }
         return true;
     }
@@ -47,10 +52,9 @@ public:
         assert(0 != len);
 
         const uv_buf_t buf {data, len};
-        uv_write_t req;
-        int err(uv_write(&req, m_uv_stream, &buf, 1, Connection::cb_uv_Write));
-        if (0 != err) {
-            // error handler
+        const int ret(uv_write(&m_write, reinterpret_cast<uv_stream_t*>(m_uv_tcp), &buf, 1, Connection::cb_uv_Write));
+        if (0 != ret) {
+            LOG_FATAL << "Flush, ret: " << ret;
         }
     }
     void DealBuffer(const char *buf, std::size_t len)
@@ -93,14 +97,16 @@ private:
     static void cb_uv_Write(uv_write_t *req, int status) noexcept
     {
         if (status < 0) {
-            // error handler
+            LOG_FATAL << "Write, " << uv_strerror(status);
         }
     }
 private:
+    uv_write_t m_write;
     RecvBuffer m_recvBuffer;
     SendBuffer m_sendBuffer;
     std::string m_tmpBuffer;
-    uv_stream_t * const m_uv_stream;
+    uv_tcp_t* const m_uv_tcp;
 };
 
 #endif
+

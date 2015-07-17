@@ -43,9 +43,11 @@ void cb_uv_AllocBuffer(uv_handle_t *handle, std::size_t suggested_size, uv_buf_t
 
 void cb_uv_Read(uv_stream_t *stream, ssize_t nread, const uv_buf_t *buf)
 {
-    if (nread < 0) {
-        // error condition
-        LOG_ERROR << "Read error, nread: " << nread;
+    if (UV_EOF == nread) {
+        LOG_WARN << "Read UV_EOF";
+    }
+    else if (nread < 0) {
+        LOG_ERROR << "Read error, " << uv_strerror(nread);
         uv_read_stop(stream);
         uv_close(reinterpret_cast<uv_handle_t*>(stream), cb_uv_Close);
     }
@@ -96,7 +98,7 @@ void cb_uv_Accept(uv_stream_t *req, int status)
         }
         LOG_INFO << "Accept a connection";
         // nothing failed, set in the connection and return
-        client->data = new Connection(req);
+        client->data = new Connection(client);
         return;
     }while (false);
     // free the memory
@@ -119,6 +121,7 @@ void cb_uv_Async(uv_async_t *handle)
     if (nullptr == conn) {
         return;
     }
-    // conn->Flush();
+    LOG_INFO << "Async reschedule write";
+    conn->Flush();
 }
 
