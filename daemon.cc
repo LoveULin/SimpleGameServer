@@ -2,12 +2,13 @@
 #include <cassert>
 #include <string>
 #include <boost/property_tree/json_parser.hpp>
+#include <boost/thread/detail/singleton.hpp>
 #include "daemon.h"
 #include "uvutil.h"
+#include "timer.h"
 #include "proto/ulin.pb.h"
 
-
-Daemon::Daemon() noexcept : m_loop(uv_default_loop())
+Daemon::Daemon() noexcept : m_loop(uv_default_loop()), m_timer(m_loop)
 {
     assert(nullptr != m_loop);
     // load configure first
@@ -52,9 +53,20 @@ void Daemon::Start() noexcept
     LOG_WARN << "uv_run's ret: " << ret << ", Bye...";
 }
 
+void Daemon::SetExtra() noexcept
+{
+    // add a timer
+    std::size_t timerID(m_timer.Add(1000, 3000, []() -> void {
+                                        std::cout << "LOL" << std::endl;
+                                    }));
+    LOG_INFO << "new timerID is: " << timerID;
+}
+
 int main()
 {
-    Daemon d;
-    d.Start();
+    // singleton instance
+    typedef boost::detail::thread::singleton<Daemon> d;
+    d::instance().SetExtra();
+    d::instance().Start();
 }
 

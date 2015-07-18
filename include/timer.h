@@ -14,7 +14,7 @@ class Timer : private boost::noncopyable
     class Deleter
     {
     public:
-        explicit Deleter(boost::pool<> pool) : m_pool(pool) {}
+        explicit Deleter(boost::pool<> &pool) : m_pool(pool) {}
         void operator()(uv_timer_t *timer)
         {
             assert(m_pool.is_from(timer));
@@ -24,6 +24,8 @@ class Timer : private boost::noncopyable
         boost::pool<> &m_pool;
     };
 public:
+    typedef void(*pf)(void); // temp callback style
+
     explicit Timer(uv_loop_t *loop) noexcept : m_loop(loop), m_pool(sizeof(uv_timer_t))
     {
         m_timers.max_load_factor(5);
@@ -32,20 +34,20 @@ public:
     {
         m_timers.clear();
     }
-    template<typename T>
     const ssize_t Add(unsigned long long initial, unsigned long long interval, 
-                      const T &functor)
+                      pf callback)
     {
-        const std::unique_ptr<uv_timer_t> timer(static_cast<uv_timer_t*>(m_pool.malloc()), 
-                                                Deleter(m_pool));
+        std::unique_ptr<uv_timer_t, Deleter> timer(static_cast<uv_timer_t*>(m_pool.malloc()), 
+                                                   Deleter(m_pool));
         if (UNLIKELY(!timer)) {
             return -ENOMEM;
         }
         int ret(uv_timer_init(m_loop, timer.get()));
         assert(0 == ret);
-        ret = uv_timer_start(timer.get(), [functor](void *data) -> void {
-                                        (void)functor(data);
-                                    }, initial, interval);
+        timer->data = reinterpret_cast<void*>(callback);
+        ret = uv_timer_start(timer.get(), [](uv_timer_s *data) -> void {
+                                              reinterpret_cast<pf>(data->data)();
+                                          }, initial, interval);
         assert(0 == ret);
         (void)m_timers.emplace(m_idPool, std::move(timer));
         return m_idPool++;
@@ -64,11 +66,8 @@ private:
     uv_loop_t *m_loop;
     boost::pool<> m_pool;
     std::size_t m_idPool {1};
-    std::unordered_map<std::size_t, std::unique_ptr<uv_timer_t>> m_timers;
+    std::unordered_map<std::size_t, std::unique_ptr<uv_timer_t, Deleter>> m_timers;
 };
-
-// singleton instance
-typedef boost::detail::thread::singleton<Timer> timer;
 
 #endif
 
