@@ -1,6 +1,8 @@
 
 #include <cassert>
 #include <string>
+#include <chrono>
+#include <thread>
 #include <boost/property_tree/json_parser.hpp>
 #include <boost/thread/detail/singleton.hpp>
 #include "daemon.h"
@@ -8,7 +10,7 @@
 #include "timer.h"
 #include "proto/ulin.pb.h"
 
-Daemon::Daemon() noexcept : m_loop(uv_default_loop()), m_timer(m_loop)
+Daemon::Daemon() noexcept : m_loop(uv_default_loop()), m_timer(m_loop), m_circle(m_loop)
 {
     assert(nullptr != m_loop);
     // load configure first
@@ -60,6 +62,12 @@ void Daemon::SetExtra() noexcept
                                         std::cout << "LOL" << std::endl;
                                     }));
     LOG_INFO << "new timerID is: " << timerID;
+    // add a idle circle
+    std::size_t circleID(m_circle.Add([]() -> void {
+                                         std::cout << "idle circle" << std::endl;
+                                         std::this_thread::sleep_for(std::chrono::seconds(2));
+                                     }));
+    LOG_INFO << "new idleID is: " << circleID;
 }
 
 int main()

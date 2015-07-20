@@ -6,6 +6,7 @@
 #include <boost/noncopyable.hpp>
 #include <boost/property_tree/ptree.hpp>
 #include "timer.h"
+#include "circle.h"
 
 class Daemon : private boost::noncopyable
 {
@@ -22,6 +23,7 @@ private:
     uv_signal_t m_signal;
     uv_tcp_t m_handle;
     Timer m_timer;
+    Circle m_circle;
 };
 
 #endif

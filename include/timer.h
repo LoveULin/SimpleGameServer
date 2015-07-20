@@ -45,8 +45,8 @@ public:
         int ret(uv_timer_init(m_loop, timer.get()));
         assert(0 == ret);
         timer->data = reinterpret_cast<void*>(callback);
-        ret = uv_timer_start(timer.get(), [](uv_timer_s *data) -> void {
-                                              reinterpret_cast<pf>(data->data)();
+        ret = uv_timer_start(timer.get(), [](uv_timer_s *handle) -> void {
+                                              (void)reinterpret_cast<pf>(handle->data)();
                                           }, initial, interval);
         assert(0 == ret);
         (void)m_timers.emplace(m_idPool, std::move(timer));
@@ -60,7 +60,6 @@ public:
         }
         (void)uv_timer_stop(it->second.get());
         (void)m_timers.erase(it);
-        return;
     }
 private:
     uv_loop_t *m_loop;
